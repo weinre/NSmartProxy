@@ -159,7 +159,6 @@ namespace NSmartProxy.Client
                     //3.创建心跳连接
                     ConnectionManager.StartHeartBeats(Global.HeartbeatInterval, HEARTBEAT_TOKEN_SRC.Token);
 
-                    IsStarted = true;
                     Exception exception = await _waiter.Task.ConfigureAwait(false) as Exception;
                     if (exception != null)
                         Router.Logger.Debug($"程序异常终止:{exception.Message}。");
@@ -168,13 +167,17 @@ namespace NSmartProxy.Client
                 else
                 {
                     Router.Logger.Debug($"程序启动失败。");
-                    //如果程序从未启动过就出错，则终止程序，否则重试。
-                    if (IsStarted == false) { StatusChanged(ClientStatus.Stopped, null); return; }
                 }
 
                 Router.Logger.Debug($"连接故障，尝试关闭连接并重试");
                 if (ConnectionManager != null)
                     ConnectionManager.CloseAllConnections();//关闭所有连接
+
+                //如果程序从未启动过就出错，则终止程序，否则重试。
+                //AlwaysReconnect：未开启此选项
+                if (IsStarted == false) { StatusChanged(ClientStatus.Stopped, null); Router.Logger.Debug($"终止程序，取消重试。"); return; }
+
+
                 //出错重试
                 await Task.Delay(Global.ClientReconnectInterval, ONE_LIVE_TOKEN_SRC.Token);
                 //TODO 返回错误码
